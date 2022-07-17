@@ -9,6 +9,7 @@ import com.example.board.repository.PostFactory;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import com.example.board.repository.PostRepository;
+import com.example.board.validation.GroupOrder;
 import com.example.board.repository.Post;
 import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.annotation.ModelAttribute;
@@ -16,6 +17,9 @@ import org.springframework.web.bind.annotation.ModelAttribute;
 import java.util.Optional;
 
 import org.springframework.validation.annotation.Validated;
+
+import org.springframework.data.domain.Sort;
+
 
 /**
  * 掲示板のフロントコントローラー.
@@ -48,7 +52,9 @@ public class BoardController {
 	 * @return 一覧を設定したモデル
 	 */
 	private Model setList(Model model) {
-		Iterable<Post> list = repository.findAll();
+		 Iterable<Post> list = repository.findByDeletedFalseOrderByUpdatedDateDesc();
+//		Iterable<Post>　は　Collection(ListやMap)のように格納し、かつ格納されたすべての要素について、指定されたアクションを行う（例：表示しろ→すべての要素が表示される）　for each文と似たような効果
+//		更新日時が新しい順かつ、削除されたPostは検索しない
 		model.addAttribute("list", list);
 		return model;
 	}
@@ -61,10 +67,12 @@ public class BoardController {
 	 * @return テンプレート
 	 */
 	@RequestMapping(value = "/create", method = RequestMethod.POST)
-	public String create(@ModelAttribute("form") @Validated Post form, BindingResult result, Model model) {
+	public String create(@ModelAttribute("form") @Validated(GroupOrder.class) Post form, BindingResult result, Model model) {
+//		RequestMethod.POST→Post型で受け取って、modelにform　formで格納
 		if (!result.hasErrors()) {
 			repository.saveAndFlush(PostFactory.createPost(form));
 			model.addAttribute("form", PostFactory.newPost());
+//			空ののPost型　RequestMethod.POSTで送られてきたものとは別
 		}
 		model = this.setList(model);
 		model.addAttribute("path", "create");
@@ -96,7 +104,7 @@ public class BoardController {
 	 * @return テンプレート
 	 */
 	@RequestMapping(value = "/update", method = RequestMethod.POST)
-	public String update(@ModelAttribute("form") @Validated Post form, BindingResult result, Model model) {
+	public String update(@ModelAttribute("form") @Validated(GroupOrder.class) Post form, BindingResult result, Model model) {
 		if (!result.hasErrors()) {
 			Optional<Post> post = repository.findById(form.getId());
 			repository.saveAndFlush(PostFactory.updatePost(post.get(), form));
